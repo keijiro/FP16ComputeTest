@@ -1,8 +1,9 @@
 ﻿#pragma enable_d3d11_debug_symbols
 
-#pragma kernel Convert
-#pragma kernel Integrate32
-#pragma kernel Integrate16
+#pragma kernel Encode16
+#pragma kernel Decode16
+#pragma kernel Multiply32
+#pragma kernel Multiply16
 
 uint VectorSize;
 
@@ -27,24 +28,32 @@ uint PackFP16(min16float2 a)
 }
 
 [numthreads(32, 1, 1)]
-void Convert(uint tid : SV_DispatchThreadID)
+void Encode16(uint tid : SV_DispatchThreadID)
 {
     Output16[tid] = PackFP16(min16float2(Input32[tid * 2], Input32[tid * 2 + 1]));
 }
 
 [numthreads(32, 1, 1)]
-void Integrate32(uint tid : SV_DispatchThreadID)
+void Decode16(uint tid : SV_DispatchThreadID)
+{
+    min16float2 packed = UnpackFP16(Input16[tid]);
+    Output32[tid * 2 + 0] = packed.x;
+    Output32[tid * 2 + 1] = packed.y;
+}
+
+[numthreads(32, 1, 1)]
+void Multiply32(uint tid : SV_DispatchThreadID)
 {
     float prod = 0;
 
     for (uint i = 0; i < VectorSize; i++)
         prod += Input32[i] * Matrix32[VectorSize * i + tid];
 
-    Output32[tid] = prod;
+    Output32[tid] = prod * sqrt(2.0 / VectorSize);
 }
 
 [numthreads(32, 1, 1)]
-void Integrate16(uint tid : SV_DispatchThreadID)
+void Multiply16(uint tid : SV_DispatchThreadID)
 {
     min16float2 prod = 0;
 
@@ -55,5 +64,5 @@ void Integrate16(uint tid : SV_DispatchThreadID)
         prod += x.y * UnpackFP16(Matrix16[VectorSize / 2 * (i * 2 + 1) + tid]);
     }
 
-    Output16[tid] = PackFP16(prod);
+    Output16[tid] = PackFP16(prod) * sqrt(2.0 / VectorSize);
 }

@@ -5,78 +5,113 @@ class Test : MonoBehaviour
     [SerializeField] int _vectorSize = 1024;
     [SerializeField] ComputeShader _compute;
 
-    ComputeBuffer _vector32;
-    ComputeBuffer _vector16;
+    ComputeBuffer _vectorA32;
+    ComputeBuffer _vectorB32;
+    ComputeBuffer _matrixA32;
+    ComputeBuffer _matrixB32;
 
-    ComputeBuffer _matrix32;
-    ComputeBuffer _matrix16;
+    ComputeBuffer _vectorA16;
+    ComputeBuffer _vectorB16;
+    ComputeBuffer _matrixA16;
+    ComputeBuffer _matrixB16;
 
-    ComputeBuffer _output32;
-    ComputeBuffer _output16;
+    float[] _inputVector;
+    float[] _outputVector;
+    float[] _dctMatrix;
+    float[] _idctMatrix;
 
     void Start()
     {
-        _vector32 = new ComputeBuffer(_vectorSize    , sizeof(float));
-        _vector16 = new ComputeBuffer(_vectorSize / 2, sizeof(uint));
-
-        _matrix32 = new ComputeBuffer(_vectorSize * _vectorSize    , sizeof(float));
-        _matrix16 = new ComputeBuffer(_vectorSize * _vectorSize / 2, sizeof(uint));
-
-        _output32 = new ComputeBuffer(_vectorSize    , sizeof(float));
-        _output16 = new ComputeBuffer(_vectorSize / 2, sizeof(uint));
-
         _compute.SetInt("VectorSize", _vectorSize);
 
-        var vector = new float[_vectorSize];
-        var matrix = new float[_vectorSize * _vectorSize];
+        _vectorA32 = new ComputeBuffer(_vectorSize, sizeof(float));
+        _vectorB32 = new ComputeBuffer(_vectorSize, sizeof(float));
+        _matrixA32 = new ComputeBuffer(_vectorSize * _vectorSize, sizeof(float));
+        _matrixB32 = new ComputeBuffer(_vectorSize * _vectorSize, sizeof(float));
+
+        _vectorA16 = new ComputeBuffer(_vectorSize / 2, sizeof(float));
+        _vectorB16 = new ComputeBuffer(_vectorSize / 2, sizeof(float));
+        _matrixA16 = new ComputeBuffer(_vectorSize * _vectorSize / 2, sizeof(float));
+        _matrixB16 = new ComputeBuffer(_vectorSize * _vectorSize / 2, sizeof(float));
+
+        _inputVector  = new float[_vectorSize];
+        _outputVector = new float[_vectorSize];
+        _dctMatrix  = new float[_vectorSize * _vectorSize];
+        _idctMatrix = new float[_vectorSize * _vectorSize];
 
         // sawtooth wave
         for (var i = 0; i < _vectorSize; i++)
-            vector[i] = 2.0f * i / (_vectorSize - 1) - 1;
+            _inputVector[i] = 2.0f * i / (_vectorSize - 1) - 1;
 
-        // cosine bases
+        // DCT matrix
         for (var row = 0; row < _vectorSize; row++)
             for (var col = 0; col < _vectorSize; col++)
-                matrix[row * _vectorSize + col] =
+                _dctMatrix[row * _vectorSize + col] =
                     Mathf.Cos(Mathf.PI / _vectorSize * (row + 0.5f) * col);
 
-        _vector32.SetData(vector);
-        _matrix32.SetData(matrix);
+        // IDCT matrix
+        for (var col = 0; col < _vectorSize; col++) _idctMatrix[col] = 0.5f;
+
+        for (var row = 1; row < _vectorSize; row++)
+            for (var col = 0; col < _vectorSize; col++)
+                _idctMatrix[row * _vectorSize + col] =
+                    Mathf.Cos(Mathf.PI / _vectorSize * row * (col + 0.5f));
     }
 
     void OnDestroy()
     {
-        _vector16.Release();
-        _vector32.Release();
+        _vectorA32.Release();
+        _vectorB32.Release();
+        _matrixA32.Release();
+        _matrixB32.Release();
 
-        _matrix16.Release();
-        _matrix32.Release();
-
-        _output16.Release();
-        _output32.Release();
+        _vectorA16.Release();
+        _vectorB16.Release();
+        _matrixA16.Release();
+        _matrixB16.Release();
     }
 
     void Update()
     {
-        var kernel = _compute.FindKernel("Convert");
-        _compute.SetBuffer(kernel, "Input32", _vector32);
-        _compute.SetBuffer(kernel, "Output16", _vector16);
-        _compute.Dispatch(kernel, _vectorSize / 32 / 2, 1, 1);
+        _vectorA32.SetData(_inputVector);
+        _matrixA32.SetData(_dctMatrix);
+        _matrixB32.SetData(_idctMatrix);
 
-        _compute.SetBuffer(kernel, "Input32", _matrix32);
-        _compute.SetBuffer(kernel, "Output16", _matrix16);
-        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 32 / 2, 1, 1);
+        var kernel = _compute.FindKernel("Encode16");
+        _compute.SetBuffer(kernel, "Input32", _vectorA32);
+        _compute.SetBuffer(kernel, "Output16", _vectorA16);
+        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
 
-        kernel = _compute.FindKernel("Integrate32");
-        _compute.SetBuffer(kernel, "Input32", _vector32);
-        _compute.SetBuffer(kernel, "Matrix32", _matrix32);
-        _compute.SetBuffer(kernel, "Output32", _output32);
+        _compute.SetBuffer(kernel, "Input32", _matrixA32);
+        _compute.SetBuffer(kernel, "Output16", _matrixA16);
+        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 16, 1, 1);
+
+        _compute.SetBuffer(kernel, "Input32", _matrixB32);
+        _compute.SetBuffer(kernel, "Output16", _matrixB16);
+        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 16, 1, 1);
+
+        kernel = _compute.FindKernel("Multiply32");
+        _compute.SetBuffer(kernel, "Input32", _vectorA32);
+        _compute.SetBuffer(kernel, "Matrix32", _matrixA32);
+        _compute.SetBuffer(kernel, "Output32", _vectorB32);
         _compute.Dispatch(kernel, _vectorSize / 32, 1, 1);
 
-        kernel = _compute.FindKernel("Integrate16");
-        _compute.SetBuffer(kernel, "Input16", _vector16);
-        _compute.SetBuffer(kernel, "Matrix16", _matrix16);
-        _compute.SetBuffer(kernel, "Output16", _output16);
-        _compute.Dispatch(kernel, _vectorSize / 32 / 2, 1, 1);
+        _compute.SetBuffer(kernel, "Input32", _vectorB32);
+        _compute.SetBuffer(kernel, "Matrix32", _matrixB32);
+        _compute.SetBuffer(kernel, "Output32", _vectorA32);
+        _compute.Dispatch(kernel, _vectorSize / 32, 1, 1);
+
+        kernel = _compute.FindKernel("Multiply16");
+        _compute.SetBuffer(kernel, "Input16", _vectorA16);
+        _compute.SetBuffer(kernel, "Matrix16", _matrixA16);
+        _compute.SetBuffer(kernel, "Output16", _vectorB16);
+        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
+
+        _compute.SetBuffer(kernel, "Input16", _vectorB16);
+        _compute.SetBuffer(kernel, "Matrix16", _matrixB16);
+        _compute.SetBuffer(kernel, "Output16", _vectorA16);
+        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
+
+        _vectorA32.GetData(_outputVector);
     }
 }
