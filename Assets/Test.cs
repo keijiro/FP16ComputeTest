@@ -80,15 +80,15 @@ class Test : MonoBehaviour
         var kernel = _compute.FindKernel("Encode16");
         _compute.SetBuffer(kernel, "Input32", _vectorA32);
         _compute.SetBuffer(kernel, "Output16", _vectorA16);
-        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
+        _compute.Dispatch(kernel, _vectorSize / 64, 1, 1);
 
         _compute.SetBuffer(kernel, "Input32", _matrixA32);
         _compute.SetBuffer(kernel, "Output16", _matrixA16);
-        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 16, 1, 1);
+        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 64, 1, 1);
 
         _compute.SetBuffer(kernel, "Input32", _matrixB32);
         _compute.SetBuffer(kernel, "Output16", _matrixB16);
-        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 16, 1, 1);
+        _compute.Dispatch(kernel, _vectorSize * _vectorSize / 64, 1, 1);
 
         kernel = _compute.FindKernel("Multiply32");
         _compute.SetBuffer(kernel, "Input32", _vectorA32);
@@ -105,12 +105,12 @@ class Test : MonoBehaviour
         _compute.SetBuffer(kernel, "Input16", _vectorA16);
         _compute.SetBuffer(kernel, "Matrix16", _matrixA16);
         _compute.SetBuffer(kernel, "Output16", _vectorB16);
-        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
+        _compute.Dispatch(kernel, _vectorSize / 64, 1, 1);
 
         _compute.SetBuffer(kernel, "Input16", _vectorB16);
         _compute.SetBuffer(kernel, "Matrix16", _matrixB16);
         _compute.SetBuffer(kernel, "Output16", _vectorA16);
-        _compute.Dispatch(kernel, _vectorSize / 16, 1, 1);
+        _compute.Dispatch(kernel, _vectorSize / 64, 1, 1);
 
         _vectorA32.GetData(_outputVector);
     }

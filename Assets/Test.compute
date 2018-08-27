@@ -64,5 +64,5 @@ void Multiply16(uint tid : SV_DispatchThreadID)
         prod += x.y * UnpackFP16(Matrix16[VectorSize / 2 * (i * 2 + 1) + tid]);
     }
 
-    Output16[tid] = PackFP16(prod) * sqrt(2.0 / VectorSize);
+    Output16[tid] = PackFP16(prod * min16float(sqrt(2.0 / VectorSize)));
 }
