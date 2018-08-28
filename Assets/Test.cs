@@ -3,7 +3,9 @@ using UnityEngine;
 class Test : MonoBehaviour
 {
     [SerializeField] int _vectorSize = 1024;
-    [SerializeField] ComputeShader _compute;
+    [SerializeField] bool _transpose = true;
+
+    [SerializeField, HideInInspector] ComputeShader _compute;
 
     ComputeBuffer _vectorA32;
     ComputeBuffer _vectorB32;
@@ -47,19 +49,19 @@ class Test : MonoBehaviour
         var s = Mathf.Sqrt(2.0f / _vectorSize);
         for (var row = 0; row < _vectorSize; row++)
             for (var col = 0; col < _vectorSize; col++)
-                _dctMatrix[row * _vectorSize + col] =
-                    s * Mathf.Cos((row + 0.5f) * col * Mathf.PI / _vectorSize);
+                _dctMatrix[_transpose ? col * _vectorSize + row : row * _vectorSize + col] =
+                    s * Mathf.Cos((col + 0.5f) * row * Mathf.PI / _vectorSize);
 
         // IDCT matrix
         s = Mathf.Sqrt(2.0f / _vectorSize);
 
-        for (var col = 0; col < _vectorSize; col++)
-            _idctMatrix[col] = s * 0.5f;
+        for (var row = 0; row < _vectorSize; row++)
+            _idctMatrix[_transpose ? row : row * _vectorSize] = s * 0.5f;
 
-        for (var row = 1; row < _vectorSize; row++)
-            for (var col = 0; col < _vectorSize; col++)
-                _idctMatrix[row * _vectorSize + col] =
-                    s * Mathf.Cos(row * (col + 0.5f) * Mathf.PI / _vectorSize);
+        for (var row = 0; row < _vectorSize; row++)
+            for (var col = 1; col < _vectorSize; col++)
+                _idctMatrix[_transpose ? col * _vectorSize + row : row * _vectorSize + col] =
+                    s * Mathf.Cos(col * (row + 0.5f) * Mathf.PI / _vectorSize);
     }
 
     void OnDestroy()
@@ -94,7 +96,7 @@ class Test : MonoBehaviour
         _compute.SetBuffer(kernel, "Output16", _matrixB16);
         _compute.Dispatch(kernel, _vectorSize * _vectorSize / 64, 1, 1);
 
-        kernel = _compute.FindKernel("Multiply32");
+        kernel = _compute.FindKernel(_transpose ? "Multiply32T" : "Multiply32");
         _compute.SetBuffer(kernel, "Input32", _vectorA32);
         _compute.SetBuffer(kernel, "Matrix32", _matrixA32);
         _compute.SetBuffer(kernel, "Output32", _vectorB32);
@@ -105,7 +107,7 @@ class Test : MonoBehaviour
         _compute.SetBuffer(kernel, "Output32", _vectorA32);
         _compute.Dispatch(kernel, _vectorSize / 32, 1, 1);
 
-        kernel = _compute.FindKernel("Multiply16");
+        kernel = _compute.FindKernel(_transpose ? "Multiply16T" : "Multiply16");
         _compute.SetBuffer(kernel, "Input16", _vectorA16);
         _compute.SetBuffer(kernel, "Matrix16", _matrixA16);
         _compute.SetBuffer(kernel, "Output16", _vectorB16);

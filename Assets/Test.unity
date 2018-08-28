@@ -230,6 +230,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63cbbe224100184408ddb3356635a821, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _columnCount: 1024
-  _rowCount: 1024
+  _vectorSize: 1024
+  _transpose: 1
   _compute: {fileID: 7200000, guid: a5d4dce5e1291454aab1cf00fb82bc93, type: 3}
