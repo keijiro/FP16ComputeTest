@@ -49,20 +49,21 @@ void Multiply32(uint tid : SV_DispatchThreadID)
     for (uint i = 0; i < VectorSize; i++)
         prod += Input32[i] * Matrix32[VectorSize * i + tid];
 
-    Output32[tid] = prod * sqrt(2.0 / VectorSize);
+    Output32[tid] = prod;
 }
 
 [numthreads(32, 1, 1)]
 void Multiply16(uint tid : SV_DispatchThreadID)
 {
     min16float2 prod = 0;
+    uint offs = tid;
 
     for (uint i = 0; i < VectorSize / 2; i++)
     {
         min16float2 x = UnpackFP16(Input16[i]);
-        prod += x.x * UnpackFP16(Matrix16[VectorSize / 2 * (i * 2 + 0) + tid]);
-        prod += x.y * UnpackFP16(Matrix16[VectorSize / 2 * (i * 2 + 1) + tid]);
+        prod += x.x * UnpackFP16(Matrix16[offs]); offs += VectorSize / 2;
+        prod += x.y * UnpackFP16(Matrix16[offs]); offs += VectorSize / 2;
     }
 
-    Output16[tid] = PackFP16(prod * min16float(sqrt(2.0 / VectorSize)));
+    Output16[tid] = PackFP16(prod);
 }

@@ -44,18 +44,22 @@ class Test : MonoBehaviour
             _inputVector[i] = 2.0f * i / (_vectorSize - 1) - 1;
 
         // DCT matrix
+        var s = Mathf.Sqrt(2.0f / _vectorSize);
         for (var row = 0; row < _vectorSize; row++)
             for (var col = 0; col < _vectorSize; col++)
                 _dctMatrix[row * _vectorSize + col] =
-                    Mathf.Cos(Mathf.PI / _vectorSize * (row + 0.5f) * col);
+                    s * Mathf.Cos((row + 0.5f) * col * Mathf.PI / _vectorSize);
 
         // IDCT matrix
-        for (var col = 0; col < _vectorSize; col++) _idctMatrix[col] = 0.5f;
+        s = Mathf.Sqrt(2.0f / _vectorSize);
+
+        for (var col = 0; col < _vectorSize; col++)
+            _idctMatrix[col] = s * 0.5f;
 
         for (var row = 1; row < _vectorSize; row++)
             for (var col = 0; col < _vectorSize; col++)
                 _idctMatrix[row * _vectorSize + col] =
-                    Mathf.Cos(Mathf.PI / _vectorSize * row * (col + 0.5f));
+                    s * Mathf.Cos(row * (col + 0.5f) * Mathf.PI / _vectorSize);
     }
 
     void OnDestroy()
